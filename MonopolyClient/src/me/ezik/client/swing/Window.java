@@ -97,33 +97,13 @@ import me.ezik.shared.message.Message;
 import me.ezik.shared.message.MessageType;
 
 public class Window extends JFrame implements MessageListener {
-
-	private JPanel sidePanels[] = new JPanel[5];
-	private String sides[] = {BorderLayout.NORTH, BorderLayout.SOUTH, BorderLayout.WEST, BorderLayout.EAST, BorderLayout.CENTER};
-	private JLabel labels[] = new JLabel[5];
-	private JTextField textField[] = new JTextField[5];
-	private JButton authButton = new JButton();
-	private JButton regButton = new JButton();
 	
 	private String username = "Anon";
-	private int id = 1;
 	
 	private MenuFrameController mc = null;
 	private GameFrameController gc = null;
-	
-	public void debugSetPanelBackground() {
-		sidePanels[0].setBackground(Color.GRAY);
-		sidePanels[0].setBorder(BorderFactory.createLineBorder(Color.black));
-		sidePanels[1].setBackground(new Color(225, 225, 225));
-		sidePanels[1].setBorder(BorderFactory.createLineBorder(Color.black));
-		sidePanels[2].setBackground(new Color(175, 175, 175));
-		sidePanels[2].setBorder(BorderFactory.createLineBorder(Color.black));
-		sidePanels[3].setBackground(new Color(175, 175, 175));
-		sidePanels[3].setBorder(BorderFactory.createLineBorder(Color.black));
-		sidePanels[4].setBackground(new Color(225, 225, 225));
-		sidePanels[4].setBorder(BorderFactory.createLineBorder(Color.black));
-	}
-	
+	private AuthFrameController ac = null;
+
 	public Window(String name) {
 		super(name);
 		this.setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -131,26 +111,11 @@ public class Window extends JFrame implements MessageListener {
 		int width = new Double(screenSize.getWidth()).intValue();
 		int height = new Double(screenSize.getHeight()).intValue();
 		this.setSize(width, height);
-		//this.setSize(1080,690);
+	
 		this.setVisible(true);
 		this.setTitle("MBE: Monopoly By Ezik");
 		this.setLayout(new BorderLayout());
 		
-		for (int i = 0; i < 5; i++) {
-			sidePanels[i] = new JPanel();
-			labels[i] = new JLabel();
-			textField[i] = new JTextField();
-			sidePanels[i].setPreferredSize(new Dimension(60, 60));//150
-			sidePanels[i].setLayout(new BorderLayout());
-			textField[i].setBorder(new EmptyBorder(0,10,0,0));
-			textField[i].setPreferredSize(new Dimension(300,50));
-			labels[i].setBorder(new EmptyBorder(0,10,0,0));
-			labels[i].setFont( new Font("Times New Roman", Font.PLAIN, 18));
-		}
-		for (int i = 0; i < 5; i++) {
-			if (i != 1)
-				this.add(sidePanels[i], sides[i]);
-		}
 		BufferedImage myPicture = null;
         InputStream imageStream = getClass().getClassLoader().getResourceAsStream("me/ezik/client/assets/applogo.png");
         try {
@@ -159,241 +124,66 @@ public class Window extends JFrame implements MessageListener {
             e.printStackTrace();
         }
 		this.setIconImage(myPicture);
-		debugSetPanelBackground();
-		authButton.addActionListener(e -> {
-			if (Program.serverListener == null)
-				if (!checkAndConnect())
-					return;
-			if (textField[0].getText().isEmpty() || textField[1].getText().isEmpty() || textField[0].getText().contains(" ") || textField[1].getText().contains(" ")) {
-				UtilityAPI.showError("username or password textfield is empty or contains whitetabs.");
-				return;
-			}
-            Program.serverListener.sendMsg(MessageType.AUTH, textField[0].getText() + " " + textField[1].getText());
-		});
-		regButton.addActionListener(e -> {
-			if (Program.serverListener == null)
-				if (!checkAndConnect())
-					return;
-			if (textField[0].getText().isEmpty() || textField[1].getText().isEmpty() || textField[0].getText().contains(" ") || textField[1].getText().contains(" ")) {
-				UtilityAPI.showError("username or password textfield is empty or contains whitetabs.");
-				return;
-			}
-			Program.serverListener.sendMsg(MessageType.REG, textField[0].getText() + " " + textField[1].getText());
-		}); 
-		initCenterPanel();
+
+		ac = new AuthFrameController(this);
+		ac.initialize();
 	}
 	
 	public String getWindowOwner() {
 		return username;
 	}
 	
-	public boolean checkAndConnect() {
+	public boolean checkAndConnect(String username, String password) {
 		try {
-			if (textField[0].getText().isEmpty() || textField[1].getText().isEmpty() || textField[0].getText().contains(" ") || textField[1].getText().contains(" ")) {
-				UtilityAPI.showError("username or password textfield is empty or contains whitetabs.");
+			if (!clientCheck(username, password))
 				return false;
-			}
-			if (textField[0].getText().length() > 15 || textField[1].getText().length() > 15) {
-				UtilityAPI.showError("username or password textfield are too big.");
-				return false;
-			} 
+			
 			InetAddress address = InetAddress.getByName("focus-suddenly.gl.at.ply.gg");
+			
 	        Socket socket = new Socket(address, 27343);
 	        Program.serverListener = new ServerCommunicator(socket);
 	        Program.serverListener.addListener(this);
+	        
+	        this.username = username;
+	        
 	        return true;
-			} catch (UnknownHostException ex) {
-				UtilityAPI.showError("server not found. (" + ex.getMessage() + ").");
-				return false;
-			} catch (IOException ex) {
-				UtilityAPI.showError("I/O exception (" + ex.getMessage() + ").");
-				return false;
+		} catch (UnknownHostException ex) {
+			UtilityAPI.showError("server not found. (" + ex.getMessage() + ").");
+			return false;
+		} catch (IOException ex) {
+			UtilityAPI.showError("I/O exception (" + ex.getMessage() + ").");
+			return false;
 		}	
 	}
-
-	public void createWinDialog(String nickname, Color color, String logoName) {
-	    // Create a blocking JDialog
-	    JDialog dialog = new JDialog(this, "Winner", true);
-	    dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-	    dialog.setSize(400, 300);
-	    dialog.setLocationRelativeTo(this);
-
-	    JPanel panel = new JPanel();
-	    panel.setLayout(new BorderLayout());
-	    panel.setBackground(Color.LIGHT_GRAY);
-	    panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-	    // Load the logo image
-	    JLabel logoLabel = new JLabel();
-	    try (InputStream logoStream = getClass().getClassLoader().getResourceAsStream("me/ezik/client/assets/" + logoName + ".png")) {
-	        BufferedImage logoImage = ImageIO.read(logoStream);
-	        if (logoImage != null) {
-	            Image scaledImage = logoImage.getScaledInstance(100, 100, Image.SCALE_SMOOTH);
-	            logoLabel.setIcon(new ImageIcon(scaledImage));
-	            logoLabel.setPreferredSize(new Dimension(100, 100));
-	        } else {
-	            logoLabel.setText("Logo not found");
-	            logoLabel.setPreferredSize(new Dimension(100, 100));
-	        }
-	    } catch (IOException e) {
-	        e.printStackTrace();
-	        logoLabel.setText("Error loading logo");
-	        logoLabel.setPreferredSize(new Dimension(100, 100));
-	    }
-
-	    // Create a panel for the logo and add a border
-	    JPanel logoPanel = new JPanel(new GridBagLayout());
-	    GridBagConstraints gbc = new GridBagConstraints();
-	    gbc.gridx = 0;
-	    gbc.gridy = 0;
-	    logoPanel.add(logoLabel, gbc);
-	    logoPanel.setBackground(Color.LIGHT_GRAY);
-	    logoPanel.setPreferredSize(new Dimension(110, 110));
-
-	    // Create the nickname label
-	    JLabel nicknameLabel = new JLabel("The WINNER is " + nickname + "!");
-	    nicknameLabel.setHorizontalAlignment(SwingConstants.CENTER);
-	    nicknameLabel.setFont(new Font("Arial", Font.BOLD, 24));
-	    nicknameLabel.setBorder(BorderFactory.createLineBorder(color, 5));
-
-	    // Add components to the main panel
-	    panel.add(logoPanel, BorderLayout.NORTH);
-	    panel.add(nicknameLabel, BorderLayout.CENTER);
-
-	    // Create and add a close button
-	    JButton closeButton = new JButton("Close");
-	    closeButton.setForeground(Color.WHITE);
-	    closeButton.setBackground(Color.GRAY);
-	    closeButton.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-	    ActionListener closeAction = e -> {
-	        dialog.dispose();
-	        mc.initialize();
-	    };
-	    closeButton.addActionListener(closeAction);
-
-	    JPanel buttonPanel = new JPanel();
-	    buttonPanel.setBackground(Color.LIGHT_GRAY);
-	    buttonPanel.add(closeButton);
-	    buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-	    panel.add(buttonPanel, BorderLayout.SOUTH);
-
-	    dialog.addWindowListener(new WindowAdapter() {
-	        @Override
-	        public void windowClosing(WindowEvent e) {
-	            closeAction.actionPerformed(null);
-	        }
-	    });
-
-	    dialog.add(panel);
-	    dialog.setVisible(true);
-	}
 	
-	public void initAuthCenterComponents() {
-		textField[0].setVisible(true);
-		textField[1].setVisible(true);
-		textField[2].setVisible(false);
-		labels[0].setVisible(false);
-		labels[0].setFont(new Font("Serif Bold", Font.BOLD, 28));
-		labels[0].setForeground(Color.red);
-		labels[0].setBorder(new EmptyBorder(0,10,0,0));
-		sidePanels[1].add(labels[0]);
+	public boolean clientCheck(String username, String password) {
+		if (username.isEmpty() || password.isEmpty() || username.contains(" ") || password.contains(" ")) {
+			UtilityAPI.showError("username or password textfield is empty or contains whitetabs.");
+			return false;
+		}
+		if (username.length() > 15 || password.length() > 15) {
+			UtilityAPI.showError("username or password textfield are too big.");
+			return false;
+		}
 		
-		labels[1].setText("Username");
-		labels[1].setVisible(true);
-		labels[2].setText("Password");
-		labels[2].setVisible(true);
-		labels[3].setText("Server IP");
-		labels[3].setVisible(false); // T
-		authButton.setPreferredSize(new Dimension(150,50));
-		authButton.setVisible(true);
-		authButton.setText("Connect");
-		regButton.setPreferredSize(new Dimension(150,50));
-		regButton.setVisible(true);
-		regButton.setText("Register");	
-	}
-	
-	public void initCenterPanel() {
-		initAuthCenterComponents();
+		this.username = username;
 		
-		 BufferedImage myPicture = null;
-        InputStream imageStream = getClass().getClassLoader().getResourceAsStream("me/ezik/client/assets/applogo.png");
-        try {
-            myPicture = ImageIO.read(imageStream);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        JLabel logoLabel = new JLabel(new ImageIcon(myPicture.getScaledInstance(200, 200, Image.SCALE_DEFAULT)));
-        GridBagConstraints styleLogo = new GridBagConstraints();
-        styleLogo.gridx = 0;
-        styleLogo.gridy = 0;
-        styleLogo.gridwidth = 3;
-        
-		GridBagConstraints styleLogin = new GridBagConstraints();
-		styleLogin.gridx = 1;
-		styleLogin.gridy = 2;
-		styleLogin.gridwidth = 2;
-		GridBagConstraints stylePassword = new GridBagConstraints();
-		stylePassword.gridx = 1;
-		stylePassword.gridy = 4;
-		stylePassword.anchor = GridBagConstraints.WEST;
-		stylePassword.gridwidth = 2;
-		GridBagConstraints styleIP = new GridBagConstraints();
-		styleIP.gridx = 1;
-		styleIP.gridy = 6;
-		styleIP.anchor = GridBagConstraints.WEST;
-		styleIP.gridwidth = 2;
-		GridBagConstraints styleLogLab = new GridBagConstraints();
-		styleLogLab.gridx = 1;
-		styleLogLab.gridy = 1;
-		styleLogLab.anchor = GridBagConstraints.WEST;
-		GridBagConstraints stylePassLab = new GridBagConstraints();
-		stylePassLab.gridx = 1;
-		stylePassLab.gridy = 3;
-		stylePassLab.anchor = GridBagConstraints.WEST;
-		GridBagConstraints styleIPLab = new GridBagConstraints();
-		styleIPLab.gridx = 1;
-		styleIPLab.gridy = 5;
-		styleIPLab.anchor = GridBagConstraints.WEST;
-		GridBagConstraints styleConnect = new GridBagConstraints();
-		styleConnect.gridx = 1;
-		styleConnect.gridy = 7;
-		GridBagConstraints styleReg = new GridBagConstraints();
-		styleReg.gridx = 2;
-		styleReg.gridy = 7;
-		styleReg.anchor = GridBagConstraints.WEST;
-		
-		sidePanels[4].setLayout(new GridBagLayout());
-        sidePanels[4].add(logoLabel, styleLogo);
-		sidePanels[4].add(textField[0], styleLogin);
-		sidePanels[4].add(textField[1], stylePassword);
-		sidePanels[4].add(textField[2], styleIP);
-		sidePanels[4].add(labels[1], styleLogLab);
-		sidePanels[4].add(labels[2], stylePassLab);
-		sidePanels[4].add(labels[3], styleIPLab);
-		sidePanels[4].add(authButton, styleConnect);
-		sidePanels[4].add(regButton, styleReg);
+		return true;
 	}
 	
     public String getUserPfpByUsername(String username) {
 	   return mc.getUserPfp().get(username);
+    }
+    
+    public void sendMsg(MessageType msgType, String content) {
+    	Program.sendMsg(msgType, content);
     }
    
 	@Override
 	public void handle(Message msg) {
 		switch(msg.getMsgType()) {
 			case AUTH:
-				username = textField[0].getText();
-				Program.serverListener.setAuthToken(msg.getAuthToken());;	
-				int profilePictureId = Integer.parseInt(msg.getText()); 
-				
-				mc = new MenuFrameController(this);
-				mc.initialize(profilePictureId);
-				
-				Program.serverListener.sendMsg(MessageType.SEARCH_GAMES, "");
-	        break;
 			case REG:
-				this.username = textField[0].getText();
 				Program.serverListener.setAuthToken(msg.getAuthToken());
 
 				int pId = Integer.parseInt(msg.getText()); 
@@ -567,7 +357,11 @@ public class Window extends JFrame implements MessageListener {
 			break;
 			case WIN:
 				String winner = msg.getText();
-				createWinDialog(winner, gc.getPlayerColorByUsername(winner), "logo" + mc.getUserPfp().get(winner));
+				gc.createWinDialog(winner, gc.getPlayerColorByUsername(winner), "logo" + mc.getUserPfp().get(winner),
+					() -> {
+							mc.initialize();
+						}
+					);
 			break;
 			case CLEAR_TRADE:
 				gc.hideTradePanel();
@@ -580,6 +374,9 @@ public class Window extends JFrame implements MessageListener {
 			break;
 			case KEEP_ALIVE:
 				System.out.println("pong");
+			break;
+			default:
+				System.out.println("unknown message");
 			break;
 		}
 	}

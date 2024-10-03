@@ -21,6 +21,7 @@ import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -175,5 +176,15 @@ public class UtilityAPI {
         } else return null;
         return set;
     }
+	
+	public static JPanel createFramePanel(Dimension preferredDimension, Color color) {
+		JPanel result = new JPanel();
+		result.setPreferredSize(preferredDimension);
+		result.setBackground(color);
+		result.setLayout(new GridBagLayout());
+		result.setBorder(BorderFactory.createLineBorder(Color.black));
+		
+		return result;
+	}
 	
 }
